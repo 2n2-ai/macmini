@@ -55,7 +55,12 @@ bash /tmp/thoughtbot-laptop
 # ---------------------------------------------------------------------------
 fancy_echo "Layer 1 (Environment) complete!"
 echo ""
-echo "  Next: open a new terminal, then run the setup wizard:"
+echo "  Next:"
+echo ""
+echo "  1. CLOSE this terminal and OPEN A NEW ONE"
+echo "     (required for Homebrew, mise, and other PATH changes)"
+echo ""
+echo "  2. Run the setup wizard:"
 echo ""
 echo "       git clone https://github.com/2n2-ai/macmini.git ~/macmini"
 echo "       bash ~/macmini/setup"
