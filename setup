@@ -32,11 +32,23 @@ echo ""
 # ---------------------------------------------------------------------------
 fancy_echo "GitHub Authentication"
 echo ""
+echo "  This Mac Mini will run an AI agent. The agent needs its own"
+echo "  GitHub account to push to its DNA and Instance repos."
+echo ""
+echo "  Before continuing, make sure you have:"
+echo "    1. Created a GitHub account for the agent (e.g. eli-2n2)"
+echo "    2. Added it as a collaborator on the DNA and Instance repos"
+echo ""
 if gh auth status &>/dev/null; then
-  echo "  Already authenticated with GitHub."
+  CURRENT_USER=$(gh api user --jq .login 2>/dev/null || echo "unknown")
+  echo "  Currently authenticated as: $CURRENT_USER"
+  read -rp "  Continue as $CURRENT_USER? [Y/n] " KEEP_AUTH
+  if [[ "$KEEP_AUTH" =~ ^[Nn] ]]; then
+    gh auth logout
+    gh auth login
+  fi
 else
-  echo "  You need to authenticate with GitHub to clone private repos."
-  echo "  If setting up an agent's instance, log in as the agent's GitHub account."
+  echo "  Log in as the agent's GitHub account (not your personal account)."
   echo ""
   gh auth login
 fi
