@@ -53,11 +53,14 @@ bash /tmp/thoughtbot-laptop
 # ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
-# Source shell config so tools are available immediately
-# shellcheck disable=SC1091
-[[ -f "$HOME/.zprofile" ]] && . "$HOME/.zprofile"
-# shellcheck disable=SC1091
-[[ -f "$HOME/.zshrc" ]] && . "$HOME/.zshrc"
+# Reload PATH so tools are available immediately
+# (Don't source full .zshrc — it contains zsh-only syntax)
+if [[ "$(uname -m)" == "arm64" ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+else
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+eval "$(mise activate bash)"
 
 fancy_echo "Layer 1 (Environment) complete!"
 echo ""
