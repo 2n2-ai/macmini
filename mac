@@ -7,7 +7,7 @@ set -e
 # Runs thoughtbot/laptop first, then layers on OpenClaw-specific tools
 # via ~/.laptop.local.
 
-MACMINI_DIR="$(cd "$(dirname "$0")" && pwd)"
+MACMINI_REPO="https://raw.githubusercontent.com/2n2-ai/macmini/main"
 MACMINI_LOG="$HOME/macmini.log"
 exec > >(tee -a "$MACMINI_LOG") 2>&1
 
@@ -41,7 +41,7 @@ fi
 # 2. Install ~/.laptop.local (OpenClaw layer)
 # ---------------------------------------------------------------------------
 fancy_echo "Installing ~/.laptop.local..."
-cp "$MACMINI_DIR/laptop.local" "$HOME/.laptop.local"
+curl -fsSL "$MACMINI_REPO/laptop.local" -o "$HOME/.laptop.local"
 
 # ---------------------------------------------------------------------------
 # 3. Run thoughtbot/laptop
