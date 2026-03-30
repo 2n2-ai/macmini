@@ -11,6 +11,13 @@ fancy_echo "Installing OpenClaw layer..."
 # ---------------------------------------------------------------------------
 # Helpers (not exported by thoughtbot/laptop)
 # ---------------------------------------------------------------------------
+append_to_file() {
+  local file="$1" text="$2"
+  if ! grep -Fqs "$text" "$file"; then
+    printf '%s\n' "$text" >> "$file"
+  fi
+}
+
 brew_install_or_upgrade() {
   if brew list --formula 2>/dev/null | grep -q "^$1\$"; then
     if brew outdated --formula 2>/dev/null | grep -q "^$1"; then
