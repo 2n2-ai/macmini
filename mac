@@ -59,7 +59,22 @@ npm_install_global() {
 }
 
 # ---------------------------------------------------------------------------
-# 1. Xcode Command Line Tools
+# 1. macOS software update
+# ---------------------------------------------------------------------------
+fancy_echo "Checking for macOS updates..."
+UPDATE_COUNT=$(softwareupdate -l 2>&1 | grep -c "^\*" || true)
+if [[ "$UPDATE_COUNT" -gt 0 ]]; then
+  fancy_echo "Installing macOS updates (this may take a while)..."
+  softwareupdate --install --all --agree-to-license
+  echo ""
+  echo "    If a restart is required, reboot and re-run this script."
+  echo "    Press ENTER to continue (or Ctrl-C to reboot first)."
+  echo ""
+  read -r
+fi
+
+# ---------------------------------------------------------------------------
+# 2. Xcode Command Line Tools
 # ---------------------------------------------------------------------------
 fancy_echo "Checking for Xcode Command Line Tools..."
 if ! xcode-select -p &>/dev/null; then
@@ -72,7 +87,7 @@ if ! xcode-select -p &>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Rosetta 2 (Apple Silicon only)
+# 3. Rosetta 2 (Apple Silicon only)
 # ---------------------------------------------------------------------------
 if [[ "$(uname -m)" == "arm64" ]]; then
   if ! /usr/bin/pgrep -q oahd; then
@@ -82,7 +97,7 @@ if [[ "$(uname -m)" == "arm64" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 3. Homebrew
+# 4. Homebrew
 # ---------------------------------------------------------------------------
 if ! command -v brew &>/dev/null; then
   fancy_echo "Installing Homebrew..."
@@ -100,7 +115,7 @@ fancy_echo "Updating Homebrew..."
 brew update
 
 # ---------------------------------------------------------------------------
-# 4. Homebrew formulae
+# 5. Homebrew formulae
 # ---------------------------------------------------------------------------
 fancy_echo "Installing CLI tools..."
 brew_install_or_upgrade "git"
@@ -114,14 +129,14 @@ brew_install_or_upgrade "python3"
 brew_install_or_upgrade "restic"
 
 # ---------------------------------------------------------------------------
-# 5. Homebrew casks
+# 6. Homebrew casks
 # ---------------------------------------------------------------------------
 fancy_echo "Installing applications..."
 brew_cask_install "google-chrome"
 brew_cask_install "tailscale"
 
 # ---------------------------------------------------------------------------
-# 6. mise (runtime version manager)
+# 7. mise (runtime version manager)
 # ---------------------------------------------------------------------------
 fancy_echo "Setting up mise..."
 brew_install_or_upgrade "mise"
@@ -133,7 +148,7 @@ append_to_file "$HOME/.zshrc" 'eval "$(mise activate zsh)"'
 eval "$(mise activate bash)"
 
 # ---------------------------------------------------------------------------
-# 7. Node.js via mise
+# 8. Node.js via mise
 # ---------------------------------------------------------------------------
 fancy_echo "Setting up Node.js..."
 
@@ -143,7 +158,7 @@ mise use --global "node@${NODE_MAJOR}"
 fancy_echo "Node.js %s  /  npm %s" "$(node --version)" "$(npm --version)"
 
 # ---------------------------------------------------------------------------
-# 8. Ruby via mise
+# 9. Ruby via mise
 # ---------------------------------------------------------------------------
 fancy_echo "Setting up Ruby..."
 mise use --global ruby@latest
@@ -151,7 +166,7 @@ mise use --global ruby@latest
 fancy_echo "Ruby %s" "$(ruby --version)"
 
 # ---------------------------------------------------------------------------
-# 9. Global npm packages
+# 10. Global npm packages
 # ---------------------------------------------------------------------------
 fancy_echo "Installing global npm packages..."
 npm_install_global "openclaw"
@@ -160,13 +175,13 @@ npm_install_global "pnpm"
 npm_install_global "vercel"
 
 # ---------------------------------------------------------------------------
-# 10. Shell configuration
+# 11. Shell configuration
 # ---------------------------------------------------------------------------
 fancy_echo "Configuring shell defaults..."
 append_to_file "$HOME/.zshrc" 'export LANG="en_US.UTF-8"'
 
 # ---------------------------------------------------------------------------
-# 11. Local customizations
+# 12. Local customizations
 # ---------------------------------------------------------------------------
 if [[ -f "$HOME/.macmini.local" ]]; then
   fancy_echo "Running local customizations from ~/.macmini.local..."
