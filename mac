@@ -53,14 +53,15 @@ bash /tmp/thoughtbot-laptop
 # ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
+# Source shell config so tools are available immediately
+# shellcheck disable=SC1091
+[[ -f "$HOME/.zprofile" ]] && . "$HOME/.zprofile"
+# shellcheck disable=SC1091
+[[ -f "$HOME/.zshrc" ]] && . "$HOME/.zshrc"
+
 fancy_echo "Layer 1 (Environment) complete!"
 echo ""
-echo "  Next:"
-echo ""
-echo "  1. CLOSE this terminal and OPEN A NEW ONE"
-echo "     (required for Homebrew, mise, and other PATH changes)"
-echo ""
-echo "  2. Run the setup wizard:"
+echo "  Next: run the setup wizard:"
 echo ""
 echo "       git clone https://github.com/2n2-ai/macmini.git ~/macmini"
 echo "       bash ~/macmini/setup"
