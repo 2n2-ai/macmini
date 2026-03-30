@@ -180,27 +180,80 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# Secrets
+# S-Tier: Secrets
 # ---------------------------------------------------------------------------
-fancy_echo "Secrets"
+fancy_echo "S-Tier: Secrets (never in git)"
 echo ""
 
-read -rp "  Do you have a secrets bundle to import? [y/N] " HAS_SECRETS
-if [[ "$HAS_SECRETS" =~ ^[Yy] ]]; then
-  read -rp "  Path to secrets-bundle.zip: " SECRETS_PATH
-  echo ""
-  fancy_echo "Extracting secrets..."
-  unzip -o -P "$(read -rsp '  Zip password: ' pw; echo "$pw")" "$SECRETS_PATH" -d "$HOME/.openclaw"
-  echo ""
-  echo "  Done."
+if [[ -f "$HOME/.openclaw/openclaw.json" ]]; then
+  echo "  openclaw.json found — secrets already in place."
 else
+  echo "  No openclaw.json found."
   echo ""
-  read -rp "  Want to package secrets FROM this machine for transfer? [y/N] " BUNDLE_SECRETS
-  if [[ "$BUNDLE_SECRETS" =~ ^[Yy] ]]; then
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    bash "$SCRIPT_DIR/bundle-secrets"
-  else
-    echo "  Skipping. You can configure secrets during openclaw onboard."
+  echo "  If migrating, copy secrets from the old machine now:"
+  echo ""
+  echo "    scp old-machine:~/.openclaw/openclaw.json  ~/.openclaw/"
+  echo "    scp old-machine:~/.openclaw/secrets.json   ~/.openclaw/"
+  echo "    scp old-machine:~/.openclaw/.env           ~/.openclaw/"
+  echo "    scp -r old-machine:~/.openclaw/credentials/ ~/.openclaw/"
+  echo "    scp -r old-machine:~/.openclaw/wallet/      ~/.openclaw/"
+  echo "    scp -r old-machine:~/.openclaw/identity/    ~/.openclaw/"
+  echo "    scp -r old-machine:~/.openclaw/.config/     ~/.openclaw/"
+  echo ""
+  echo "  If fresh setup, you'll need these API keys ready:"
+  echo "    - Anthropic API key"
+  echo "    - Telegram bot token (from @BotFather)"
+  echo "    - Any other channel tokens (Discord, Slack, etc.)"
+  echo ""
+  read -rp "  Press ENTER when secrets are in place (or Ctrl-C to do it later)... "
+
+  if [[ ! -f "$HOME/.openclaw/openclaw.json" ]]; then
+    fancy_echo "Generating openclaw.json from template..."
+    echo ""
+    read -rp "  Anthropic API key: " ANTHROPIC_KEY
+    read -rp "  Telegram bot token (or press ENTER to skip): " TELEGRAM_TOKEN
+    read -rp "  Gateway port [18789]: " GW_PORT
+    GW_PORT="${GW_PORT:-18789}"
+    GW_TOKEN=$(openssl rand -hex 24)
+
+    cat > "$HOME/.openclaw/openclaw.json" << CFGEOF
+{
+  "agents": {
+    "defaults": {
+      "workspace": "$HOME/.openclaw/workspace",
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-6",
+        "fallbacks": [
+          "anthropic/claude-haiku-4-5"
+        ]
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": $([ -n "$TELEGRAM_TOKEN" ] && echo "true" || echo "false"),
+      "botToken": "$TELEGRAM_TOKEN",
+      "dmPolicy": "allowlist",
+      "allowFrom": [],
+      "groupPolicy": "allowlist"
+    }
+  },
+  "gateway": {
+    "port": $GW_PORT,
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "$GW_TOKEN"
+    }
+  },
+  "env": {
+    "ANTHROPIC_API_KEY": "$ANTHROPIC_KEY"
+  }
+}
+CFGEOF
+    echo ""
+    echo "  Config generated. Gateway token: $GW_TOKEN"
+    echo "  You can add more channels later via: openclaw config set ..."
   fi
 fi
 echo ""
@@ -212,17 +265,14 @@ fancy_echo "Gateway"
 echo ""
 
 if [[ -f "$HOME/.openclaw/openclaw.json" ]]; then
-  read -rp "  Config found. Install gateway LaunchAgent? [Y/n] " INSTALL_GW
-  if [[ ! "$INSTALL_GW" =~ ^[Nn] ]]; then
-    openclaw gateway install
-  fi
+  fancy_echo "Installing gateway LaunchAgent..."
+  openclaw gateway install --port "${GW_PORT:-18789}"
+  echo ""
+  fancy_echo "Starting gateway..."
+  openclaw gateway restart
 else
-  read -rp "  No config found. Run openclaw onboard now? [Y/n] " RUN_ONBOARD
-  if [[ ! "$RUN_ONBOARD" =~ ^[Nn] ]]; then
-    openclaw onboard --install-daemon
-  else
-    echo "  Run later: openclaw onboard --install-daemon"
-  fi
+  echo "  No config found. Cannot start gateway."
+  echo "  Transfer openclaw.json and re-run: bash ~/macmini/setup"
 fi
 
 # ---------------------------------------------------------------------------
