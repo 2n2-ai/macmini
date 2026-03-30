@@ -7,6 +7,12 @@ Runs [thoughtbot/laptop](https://github.com/thoughtbot/laptop) first, then layer
 ## Install
 
 ```sh
+curl -fsSL https://raw.githubusercontent.com/2n2-ai/macmini/main/mac | bash
+```
+
+Or clone and run:
+
+```sh
 git clone https://github.com/2n2-ai/macmini.git ~/macmini
 cd ~/macmini
 bash mac
