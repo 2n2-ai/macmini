@@ -1,0 +1,82 @@
+#!/bin/bash
+set -e
+
+# backup — Encrypt and upload ~/.openclaw to Backblaze B2 via restic
+# https://github.com/2n2-ai/macmini
+
+fancy_echo() {
+  local fmt="$1"; shift
+  # shellcheck disable=SC2059
+  printf "\\n==> $fmt\\n" "$@"
+}
+
+# ---------------------------------------------------------------------------
+# 1. Load credentials from macOS Keychain (or prompt)
+# ---------------------------------------------------------------------------
+RESTIC_PASSWORD=$(security find-generic-password -a restic -s openclaw-backup -w 2>/dev/null || true)
+if [[ -z "$RESTIC_PASSWORD" ]]; then
+  read -rsp "Restic password: " RESTIC_PASSWORD
+  echo ""
+  security add-generic-password -a restic -s openclaw-backup -w "$RESTIC_PASSWORD" -U 2>/dev/null || true
+fi
+
+B2_ACCOUNT_ID=$(security find-generic-password -a b2 -s openclaw-backup-id -w 2>/dev/null || true)
+if [[ -z "$B2_ACCOUNT_ID" ]]; then
+  read -rp "B2 Account ID: " B2_ACCOUNT_ID
+  security add-generic-password -a b2 -s openclaw-backup-id -w "$B2_ACCOUNT_ID" -U 2>/dev/null || true
+fi
+
+B2_ACCOUNT_KEY=$(security find-generic-password -a b2 -s openclaw-backup-key -w 2>/dev/null || true)
+if [[ -z "$B2_ACCOUNT_KEY" ]]; then
+  read -rsp "B2 Account Key: " B2_ACCOUNT_KEY
+  echo ""
+  security add-generic-password -a b2 -s openclaw-backup-key -w "$B2_ACCOUNT_KEY" -U 2>/dev/null || true
+fi
+
+export RESTIC_PASSWORD B2_ACCOUNT_ID B2_ACCOUNT_KEY
+
+RESTIC_BUCKET="${RESTIC_BUCKET:-openclaw-backup}"
+export RESTIC_REPOSITORY="b2:${RESTIC_BUCKET}:/"
+
+# ---------------------------------------------------------------------------
+# 2. Initialize repo if first run
+# ---------------------------------------------------------------------------
+if ! restic snapshots --tag openclaw &>/dev/null; then
+  fancy_echo "Initializing restic repository..."
+  restic init
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Backup
+# ---------------------------------------------------------------------------
+fancy_echo "Backing up ~/.openclaw..."
+
+restic backup "$HOME/.openclaw" \
+  --exclude='workspace/projects/' \
+  --exclude='extensions/*/node_modules/' \
+  --exclude='openclaw.json.backup.*' \
+  --exclude='openclaw.json.bak*' \
+  --exclude='openclaw.json.clobbered.*' \
+  --exclude='browser/' \
+  --exclude='delivery-queue/' \
+  --exclude='update-check.json' \
+  --exclude='workspace.bodhi-backup/' \
+  --tag openclaw \
+  --verbose
+
+# ---------------------------------------------------------------------------
+# 4. Prune old snapshots
+# ---------------------------------------------------------------------------
+fancy_echo "Pruning old snapshots..."
+
+restic forget \
+  --keep-daily 7 \
+  --keep-weekly 4 \
+  --keep-monthly 6 \
+  --prune
+
+# ---------------------------------------------------------------------------
+# Done
+# ---------------------------------------------------------------------------
+fancy_echo "Backup complete!"
+restic snapshots --tag openclaw --latest 3

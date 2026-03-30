@@ -60,30 +60,39 @@ The `mac` script:
 
 ## After bootstrap
 
+**Fresh setup (no existing instance):**
 ```sh
-# Configure gateway, channels, LaunchAgent
 openclaw onboard --install-daemon
+```
 
-# (Optional) Restore instance from backup
+**Migrating from an existing machine:**
+```sh
+# Restore config, memory, sessions, credentials from backup
 bash ~/macmini/restore
 
-# (Optional) Open Tailscale and sign in
+# Install the LaunchAgent from your restored config (no wizard needed)
+openclaw gateway install
 ```
 
 ## Backup and restore
 
-```sh
-# First backup (from your current machine)
-brew install restic
-export B2_ACCOUNT_ID="..." B2_ACCOUNT_KEY="..."
-restic init --repo b2:openclaw-backup:/
-restic backup ~/.openclaw \
-  --exclude='workspace/projects/' \
-  --exclude='extensions/*/node_modules/' \
-  --exclude='browser/' \
-  --tag openclaw
+### Creating backups
 
-# Restore on new Mac Mini
+Prerequisites: a [Backblaze B2](https://www.backblaze.com/b2/cloud-storage.html) account with a bucket.
+
+```sh
+# From your current machine (restic is already installed by the mac script)
+git clone https://github.com/2n2-ai/macmini.git ~/macmini
+bash ~/macmini/backup
+```
+
+On first run, `backup` prompts for your B2 credentials and restic password, stores them in macOS Keychain, initializes the restic repo, and runs the backup. Subsequent runs pull credentials from Keychain automatically.
+
+Automate with a LaunchAgent or cron for regular backups.
+
+### Restoring on a new machine
+
+```sh
 bash ~/macmini/restore
 ```
 
