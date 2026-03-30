@@ -6,6 +6,8 @@ Runs [thoughtbot/laptop](https://github.com/thoughtbot/laptop) first, then layer
 
 ## Install
 
+Before running, upgrade to the latest macOS via **System Settings > General > Software Update**. The script installs pending updates, but a fresh Mac Mini may need a full OS upgrade first.
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/2n2-ai/macmini/main/mac | bash
 ```
