@@ -12,6 +12,14 @@ fancy_echo() {
 
 WORKSPACE="$HOME/.openclaw/workspace"
 
+# Ensure Homebrew and mise are on PATH
+if [[ "$(uname -m)" == "arm64" ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+else
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+command -v mise &>/dev/null && eval "$(mise activate bash)"
+
 # ---------------------------------------------------------------------------
 # Layer 1 check
 # ---------------------------------------------------------------------------

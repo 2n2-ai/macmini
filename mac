@@ -61,6 +61,7 @@ else
   eval "$(/usr/local/bin/brew shellenv)"
 fi
 eval "$(mise activate bash)"
+hash -r
 
 fancy_echo "Layer 1 (Environment) complete!"
 echo ""
