@@ -1,0 +1,222 @@
+#!/bin/bash
+set -e
+
+# setup — Interactive wizard for Layer 2 (DNA) and Layer 3 (Instance)
+# https://github.com/2n2-ai/macmini
+
+fancy_echo() {
+  local fmt="$1"; shift
+  # shellcheck disable=SC2059
+  printf "\\n==> $fmt\\n" "$@"
+}
+
+WORKSPACE="$HOME/.openclaw/workspace"
+
+# ---------------------------------------------------------------------------
+# Layer 1 check
+# ---------------------------------------------------------------------------
+echo ""
+fancy_echo "Layer 1 (Environment) is ready."
+echo ""
+
+# ---------------------------------------------------------------------------
+# GitHub auth
+# ---------------------------------------------------------------------------
+fancy_echo "GitHub Authentication"
+echo ""
+if gh auth status &>/dev/null; then
+  echo "  Already authenticated with GitHub."
+else
+  echo "  You need to authenticate with GitHub to clone private repos."
+  echo "  If setting up an agent's instance, log in as the agent's GitHub account."
+  echo ""
+  gh auth login
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# Layer 2: Agent DNA
+# ---------------------------------------------------------------------------
+fancy_echo "Layer 2: Agent DNA"
+echo "  The portable agent: skills, persona, behaviors."
+echo "  This can be shared across machines and white-label deployments."
+echo ""
+
+if [[ -d "$HOME/.openclaw/dna.git" ]]; then
+  echo "  DNA repo already exists at ~/.openclaw/dna.git"
+  echo "  Skipping."
+else
+  read -rp "  Do you have an agent-dna repo to clone? [y/N] " HAS_DNA
+  echo ""
+  if [[ "$HAS_DNA" =~ ^[Yy] ]]; then
+    read -rp "  Repo URL (e.g. git@github.com:2n2-ai/agent-dna.git): " DNA_REPO
+    echo ""
+    fancy_echo "Cloning DNA repo..."
+    git clone --bare "$DNA_REPO" "$HOME/.openclaw/dna.git"
+    mkdir -p "$WORKSPACE"
+    git --git-dir="$HOME/.openclaw/dna.git" --work-tree="$WORKSPACE" checkout
+    echo "  Done."
+  else
+    echo "  Initializing empty DNA repo..."
+    git init --bare "$HOME/.openclaw/dna.git"
+    mkdir -p "$WORKSPACE"
+
+    if [[ -f "$WORKSPACE/SOUL.md" ]]; then
+      echo "  Found existing workspace files. Creating initial DNA commit..."
+      EXCLUDE="$HOME/.openclaw/dna.git/info/exclude"
+      cat > "$EXCLUDE" << 'EXCL'
+IDENTITY.md
+USER.md
+MEMORY.md
+STRATEGY.md
+PRIORITIES.md
+PROJECTS.md
+BACKLOG.md
+memory/
+content/
+config/
+projects/
+scratch/
+taxes/
+.env
+node_modules/
+.next/
+EXCL
+      git --git-dir="$HOME/.openclaw/dna.git" --work-tree="$WORKSPACE" add -A
+      git --git-dir="$HOME/.openclaw/dna.git" --work-tree="$WORKSPACE" commit -m "Initial agent DNA"
+    fi
+
+    echo ""
+    read -rp "  Create a GitHub repo for DNA? [y/N] " CREATE_DNA_REPO
+    if [[ "$CREATE_DNA_REPO" =~ ^[Yy] ]]; then
+      read -rp "  Repo name (e.g. 2n2-ai/agent-dna): " DNA_REPO_NAME
+      gh repo create "$DNA_REPO_NAME" --private
+      git --git-dir="$HOME/.openclaw/dna.git" --work-tree="$WORKSPACE" remote add origin "git@github.com:${DNA_REPO_NAME}.git"
+      git --git-dir="$HOME/.openclaw/dna.git" --work-tree="$WORKSPACE" push -u origin main
+      echo "  Pushed to $DNA_REPO_NAME"
+    fi
+  fi
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# Layer 3: Instance
+# ---------------------------------------------------------------------------
+fancy_echo "Layer 3: Instance"
+echo "  Company-specific data: identity, memory, strategy, content."
+echo ""
+
+if [[ -d "$HOME/.openclaw/instance.git" ]]; then
+  echo "  Instance repo already exists at ~/.openclaw/instance.git"
+  echo "  Skipping."
+else
+  read -rp "  Do you have an instance repo to clone? [y/N] " HAS_INSTANCE
+  echo ""
+  if [[ "$HAS_INSTANCE" =~ ^[Yy] ]]; then
+    read -rp "  Repo URL (e.g. git@github.com:2n2-ai/openclaw-instance.git): " INSTANCE_REPO
+    echo ""
+    fancy_echo "Cloning Instance repo..."
+    git clone --bare "$INSTANCE_REPO" "$HOME/.openclaw/instance.git"
+    git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" checkout
+    echo "  Done."
+  else
+    echo "  Initializing empty Instance repo..."
+    git init --bare "$HOME/.openclaw/instance.git"
+
+    if [[ -f "$WORKSPACE/IDENTITY.md" ]]; then
+      echo "  Found existing workspace files. Creating initial Instance commit..."
+      EXCLUDE="$HOME/.openclaw/instance.git/info/exclude"
+      cat > "$EXCLUDE" << 'EXCL'
+SOUL.md
+AGENTS.md
+HEARTBEAT.md
+TOOLS.md
+BOOTSTRAP.md
+agents/
+skills/
+guides/
+package.json
+.gitignore
+.env
+projects/
+node_modules/
+.next/
+EXCL
+      git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" add -A
+      git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" commit -m "Initial instance data"
+    fi
+
+    echo ""
+    read -rp "  Create a GitHub repo for Instance? [y/N] " CREATE_INSTANCE_REPO
+    if [[ "$CREATE_INSTANCE_REPO" =~ ^[Yy] ]]; then
+      read -rp "  Repo name (e.g. 2n2-ai/openclaw-instance): " INSTANCE_REPO_NAME
+      gh repo create "$INSTANCE_REPO_NAME" --private
+      git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" remote add origin "git@github.com:${INSTANCE_REPO_NAME}.git"
+      git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" push -u origin main
+      echo "  Pushed to $INSTANCE_REPO_NAME"
+    fi
+  fi
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# Secrets
+# ---------------------------------------------------------------------------
+fancy_echo "Secrets"
+echo ""
+
+read -rp "  Do you have a secrets bundle to import? [y/N] " HAS_SECRETS
+if [[ "$HAS_SECRETS" =~ ^[Yy] ]]; then
+  read -rp "  Path to secrets-bundle.zip: " SECRETS_PATH
+  echo ""
+  fancy_echo "Extracting secrets..."
+  unzip -o -P "$(read -rsp '  Zip password: ' pw; echo "$pw")" "$SECRETS_PATH" -d "$HOME/.openclaw"
+  echo ""
+  echo "  Done."
+else
+  echo ""
+  read -rp "  Want to package secrets FROM this machine for transfer? [y/N] " BUNDLE_SECRETS
+  if [[ "$BUNDLE_SECRETS" =~ ^[Yy] ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    bash "$SCRIPT_DIR/bundle-secrets"
+  else
+    echo "  Skipping. You can configure secrets during openclaw onboard."
+  fi
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# Gateway
+# ---------------------------------------------------------------------------
+fancy_echo "Gateway"
+echo ""
+
+if [[ -f "$HOME/.openclaw/openclaw.json" ]]; then
+  read -rp "  Config found. Install gateway LaunchAgent? [Y/n] " INSTALL_GW
+  if [[ ! "$INSTALL_GW" =~ ^[Nn] ]]; then
+    openclaw gateway install
+  fi
+else
+  read -rp "  No config found. Run openclaw onboard now? [Y/n] " RUN_ONBOARD
+  if [[ ! "$RUN_ONBOARD" =~ ^[Nn] ]]; then
+    openclaw onboard --install-daemon
+  else
+    echo "  Run later: openclaw onboard --install-daemon"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Done
+# ---------------------------------------------------------------------------
+echo ""
+fancy_echo "Setup complete!"
+echo ""
+echo "  Aliases available (open a new terminal):"
+echo "    dna       — git operations on Agent DNA (Layer 2)"
+echo "    instance  — git operations on Instance (Layer 3)"
+echo ""
+echo "  Examples:"
+echo "    dna status"
+echo "    dna add skills/new-skill/ && dna commit -m 'Add skill' && dna push"
+echo "    instance add memory/ && instance commit -m 'Daily notes' && instance push"
+echo ""

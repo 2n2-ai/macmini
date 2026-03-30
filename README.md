@@ -6,94 +6,74 @@ Runs [thoughtbot/laptop](https://github.com/thoughtbot/laptop) first, then layer
 
 ## Install
 
-Before running, upgrade to the latest macOS via **System Settings > General > Software Update**. The script installs pending updates, but a fresh Mac Mini may need a full OS upgrade first.
+Before running, upgrade to the latest macOS via **System Settings > General > Software Update**.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/2n2-ai/macmini/main/mac | bash
 ```
 
-Or clone and run:
+Then open a new terminal and run the setup wizard:
 
 ```sh
 git clone https://github.com/2n2-ai/macmini.git ~/macmini
-cd ~/macmini
-bash mac
+bash ~/macmini/setup
 ```
 
-The `mac` script:
-1. Installs macOS software updates
-2. Copies `laptop.local` to `~/.laptop.local`
-3. Runs thoughtbot/laptop (Xcode CLT, Rosetta, Homebrew, git, gh, tmux, asdf, Node, Ruby)
-4. laptop sources `~/.laptop.local`, which adds the OpenClaw layer
+## The three layers
+
+| Layer | What | Repo | Command |
+|-------|------|------|---------|
+| **1. Environment** | Machine setup | `2n2-ai/macmini` (public) | `bash mac` |
+| **2. Agent DNA** | Skills, persona, behaviors | `2n2-ai/eli` (private) | `dna status` |
+| **3. Instance** | Company identity, memory, credentials | `2n2-ai/l3` (private) | `instance status` |
+
+The `setup` wizard walks you through cloning or creating L2 and L3 repos, importing secrets, and starting the gateway.
+
+## How the workspace works
+
+Both L2 and L3 are [bare git repos](https://www.atlassian.com/git/tutorials/dotfiles) sharing `~/.openclaw/workspace/` as their work tree. No `.git` directory inside the workspace.
+
+```sh
+# Agent DNA (portable, white-labelable)
+dna add skills/new-skill/
+dna commit -m "Add skill"
+dna push
+
+# Instance (company-specific)
+instance add memory/2026-03-30.md
+instance commit -m "Daily notes"
+instance push
+```
 
 ## What laptop.local adds
 
 ### CLI tools (Homebrew)
-- [himalaya](https://github.com/pimalaya/himalaya) &mdash; email CLI (IMAP/SMTP)
-- [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) &mdash; Cloudflare tunnels
-- [flyctl](https://fly.io/docs/flyctl/) &mdash; Fly.io deployment
-- [restic](https://restic.net) &mdash; encrypted backup
-- [mise](https://mise.jdx.dev) &mdash; runtime version manager
-- python3
+- himalaya, cloudflared, flyctl, python3, mise
 
 ### Applications (Homebrew Cask)
-- [Google Chrome](https://www.google.com/chrome/) &mdash; browser automation via CDP
-- [Tailscale](https://tailscale.com) &mdash; remote access
+- Google Chrome, Tailscale
 
 ### Runtimes (via mise)
-- Node.js 24
-- Ruby (latest)
+- Node.js 24, Ruby (latest)
 
 ### Global npm packages
-- [OpenClaw](https://openclaw.ai)
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [pnpm](https://pnpm.io)
-- [Vercel CLI](https://vercel.com/cli)
+- OpenClaw, Claude Code, pnpm, Vercel CLI
 
-## The three-layer architecture
+## Migrating to a new Mac Mini
 
-| Layer | What | Lifecycle | Strategy |
-|-------|------|-----------|----------|
-| **1. Environment** | Machine setup (this repo) | Reinstallable from scratch | `bash mac` |
-| **2. Agent DNA** | Skills, persona, behaviors | Portable / white-label | `git clone` into workspace |
-| **3. Instance** | Credentials, memory, projects | Company-specific, irreplaceable | Encrypted backup via restic |
-
-## After bootstrap
-
-**Fresh setup (no existing instance):**
+On the **old machine**:
 ```sh
-openclaw onboard --install-daemon
+bash ~/macmini/bundle-secrets
+# Transfer secrets-bundle.zip to new machine
 ```
 
-**Migrating from an existing machine:**
+On the **new Mac Mini**:
 ```sh
-# Restore config, memory, sessions, credentials from backup
-bash ~/macmini/restore
-
-# Install the LaunchAgent from your restored config (no wizard needed)
-openclaw gateway install
-```
-
-## Backup and restore
-
-### Creating backups
-
-Prerequisites: a [Backblaze B2](https://www.backblaze.com/b2/cloud-storage.html) account with a bucket.
-
-```sh
-# From your current machine (restic is already installed by the mac script)
+curl -fsSL https://raw.githubusercontent.com/2n2-ai/macmini/main/mac | bash
+# Open new terminal
 git clone https://github.com/2n2-ai/macmini.git ~/macmini
-bash ~/macmini/backup
-```
-
-On first run, `backup` prompts for your B2 credentials and restic password, stores them in macOS Keychain, initializes the restic repo, and runs the backup. Subsequent runs pull credentials from Keychain automatically.
-
-Automate with a LaunchAgent or cron for regular backups.
-
-### Restoring on a new machine
-
-```sh
-bash ~/macmini/restore
+bash ~/macmini/setup
+# The wizard handles: gh auth, L2 clone, L3 clone, secrets import, gateway install
 ```
 
 ## Why native instead of Docker?
@@ -104,7 +84,6 @@ bash ~/macmini/restore
 | Camera | N/A | Native `camera.snap` |
 | Screen recording | N/A | Native `screen.record` |
 | Canvas | Separate HTTP server | Native WKWebView |
-| Menu bar | N/A | Real-time status + badges |
 | Persistence | Tools lost on restart | Everything persists |
 | Remote access | Exposed ports | Tailscale Serve/Funnel |
 

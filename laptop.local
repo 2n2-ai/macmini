@@ -9,18 +9,22 @@
 fancy_echo "Installing OpenClaw layer..."
 
 # ---------------------------------------------------------------------------
-# CLI tools
+# Helpers (not exported by thoughtbot/laptop)
 # ---------------------------------------------------------------------------
-brew_install_or_upgrade "himalaya"      # Email CLI (IMAP/SMTP)
-brew_install_or_upgrade "cloudflared"   # Cloudflare tunnels
-brew_install_or_upgrade "flyctl"        # Fly.io deployment
-brew_install_or_upgrade "python3"       # Scripting / scrapers
-brew_install_or_upgrade "restic"        # Encrypted backup
-brew_install_or_upgrade "mise"          # Runtime version manager
+brew_install_or_upgrade() {
+  if brew list --formula 2>/dev/null | grep -q "^$1\$"; then
+    if brew outdated --formula 2>/dev/null | grep -q "^$1"; then
+      fancy_echo "Upgrading %s..." "$1"
+      brew upgrade "$1"
+    else
+      fancy_echo "Already installed: %s" "$1"
+    fi
+  else
+    fancy_echo "Installing %s..." "$1"
+    brew install "$1"
+  fi
+}
 
-# ---------------------------------------------------------------------------
-# Applications
-# ---------------------------------------------------------------------------
 brew_cask_install() {
   if brew list --cask 2>/dev/null | grep -q "^$1\$"; then
     fancy_echo "Already installed: %s" "$1"
@@ -30,11 +34,33 @@ brew_cask_install() {
   fi
 }
 
-brew_cask_install "google-chrome"       # Browser automation via CDP
-brew_cask_install "tailscale"           # Remote access
+npm_install_global() {
+  if npm list -g "$1" &>/dev/null; then
+    fancy_echo "Updating %s..." "$1"
+    npm install -g "$1@latest"
+  else
+    fancy_echo "Installing %s..." "$1"
+    npm install -g "$1@latest"
+  fi
+}
 
 # ---------------------------------------------------------------------------
-# mise runtimes (laptop installs Node/Ruby via asdf — we also set up mise)
+# CLI tools
+# ---------------------------------------------------------------------------
+brew_install_or_upgrade "himalaya"
+brew_install_or_upgrade "cloudflared"
+brew_install_or_upgrade "flyctl"
+brew_install_or_upgrade "python3"
+brew_install_or_upgrade "mise"
+
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+brew_cask_install "google-chrome"
+brew_cask_install "tailscale"
+
+# ---------------------------------------------------------------------------
+# mise runtimes
 # ---------------------------------------------------------------------------
 fancy_echo "Configuring mise..."
 
@@ -48,19 +74,15 @@ mise use --global ruby@latest
 fancy_echo "mise Node.js %s  /  Ruby %s" "$(node --version)" "$(ruby --version)"
 
 # ---------------------------------------------------------------------------
+# Shell aliases for workspace git repos
+# ---------------------------------------------------------------------------
+append_to_file "$HOME/.zshrc" "alias dna='git --git-dir=\$HOME/.openclaw/dna.git --work-tree=\$HOME/.openclaw/workspace'"
+append_to_file "$HOME/.zshrc" "alias instance='git --git-dir=\$HOME/.openclaw/instance.git --work-tree=\$HOME/.openclaw/workspace'"
+
+# ---------------------------------------------------------------------------
 # Global npm packages
 # ---------------------------------------------------------------------------
 fancy_echo "Installing global npm packages..."
-
-npm_install_global() {
-  if npm list -g "$1" &>/dev/null; then
-    fancy_echo "Updating %s..." "$1"
-    npm install -g "$1@latest"
-  else
-    fancy_echo "Installing %s..." "$1"
-    npm install -g "$1@latest"
-  fi
-}
 
 npm_install_global "openclaw"
 npm_install_global "@anthropic-ai/claude-code"
