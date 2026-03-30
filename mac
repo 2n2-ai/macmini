@@ -1,0 +1,205 @@
+#!/bin/bash
+set -e
+
+# macmini — Bootstrap a Mac Mini into a native OpenClaw machine
+# https://github.com/openclaw/macmini
+
+MACMINI_LOG="$HOME/macmini.log"
+exec > >(tee -a "$MACMINI_LOG") 2>&1
+
+echo ""
+echo "macmini bootstrap — $(date)"
+echo "Log: $MACMINI_LOG"
+echo ""
+
+fancy_echo() {
+  local fmt="$1"; shift
+  # shellcheck disable=SC2059
+  printf "\\n==> $fmt\\n" "$@"
+}
+
+append_to_file() {
+  local file="$1" text="$2"
+  if ! grep -Fqs "$text" "$file"; then
+    printf '%s\n' "$text" >> "$file"
+  fi
+}
+
+brew_install_or_upgrade() {
+  if brew list --formula 2>/dev/null | grep -q "^$1\$"; then
+    if brew outdated --formula 2>/dev/null | grep -q "^$1"; then
+      fancy_echo "Upgrading %s..." "$1"
+      brew upgrade "$1"
+    else
+      fancy_echo "Already installed: %s" "$1"
+    fi
+  else
+    fancy_echo "Installing %s..." "$1"
+    brew install "$1"
+  fi
+}
+
+brew_cask_install() {
+  if brew list --cask 2>/dev/null | grep -q "^$1\$"; then
+    fancy_echo "Already installed: %s" "$1"
+  else
+    fancy_echo "Installing %s..." "$1"
+    brew install --cask "$1"
+  fi
+}
+
+npm_install_global() {
+  if npm list -g "$1" &>/dev/null; then
+    fancy_echo "Updating %s..." "$1"
+    npm install -g "$1@latest"
+  else
+    fancy_echo "Installing %s..." "$1"
+    npm install -g "$1@latest"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# 1. Xcode Command Line Tools
+# ---------------------------------------------------------------------------
+fancy_echo "Checking for Xcode Command Line Tools..."
+if ! xcode-select -p &>/dev/null; then
+  fancy_echo "Installing Xcode Command Line Tools..."
+  xcode-select --install
+  echo ""
+  echo "    A dialog should have opened. Install the tools, then press ENTER to continue."
+  echo ""
+  read -r
+fi
+
+# ---------------------------------------------------------------------------
+# 2. Rosetta 2 (Apple Silicon only)
+# ---------------------------------------------------------------------------
+if [[ "$(uname -m)" == "arm64" ]]; then
+  if ! /usr/bin/pgrep -q oahd; then
+    fancy_echo "Installing Rosetta 2..."
+    softwareupdate --install-rosetta --agree-to-license
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Homebrew
+# ---------------------------------------------------------------------------
+if ! command -v brew &>/dev/null; then
+  fancy_echo "Installing Homebrew..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+if [[ "$(uname -m)" == "arm64" ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+  append_to_file "$HOME/.zprofile" 'eval "$(/opt/homebrew/bin/brew shellenv)"'
+else
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+
+fancy_echo "Updating Homebrew..."
+brew update
+
+# ---------------------------------------------------------------------------
+# 4. Homebrew formulae
+# ---------------------------------------------------------------------------
+fancy_echo "Installing CLI tools..."
+brew_install_or_upgrade "git"
+brew_install_or_upgrade "gh"
+brew_install_or_upgrade "jq"
+brew_install_or_upgrade "tmux"
+
+# ---------------------------------------------------------------------------
+# 5. Homebrew casks
+# ---------------------------------------------------------------------------
+fancy_echo "Installing applications..."
+brew_cask_install "google-chrome"
+brew_cask_install "tailscale"
+
+# ---------------------------------------------------------------------------
+# 6. asdf version manager
+# ---------------------------------------------------------------------------
+fancy_echo "Setting up asdf..."
+brew_install_or_upgrade "asdf"
+
+touch "$HOME/.zshrc"
+append_to_file "$HOME/.zshrc" '. "$(brew --prefix asdf)/libexec/asdf.sh"'
+
+# Source asdf for this session
+ASDF_INIT="$(brew --prefix asdf)/libexec/asdf.sh"
+if [[ -f "$ASDF_INIT" ]]; then
+  # shellcheck disable=SC1090
+  . "$ASDF_INIT"
+fi
+
+# ---------------------------------------------------------------------------
+# 7. Node.js via asdf
+# ---------------------------------------------------------------------------
+fancy_echo "Setting up Node.js..."
+
+if ! asdf plugin list 2>/dev/null | grep -q "^nodejs$"; then
+  asdf plugin add nodejs https://github.com/asdf-vm/asdf-nodejs.git
+fi
+
+NODE_MAJOR="${NODE_MAJOR:-24}"
+LATEST_NODE=$(asdf latest nodejs "$NODE_MAJOR" 2>/dev/null || asdf latest nodejs 22)
+
+if ! asdf list nodejs 2>/dev/null | grep -q "$LATEST_NODE"; then
+  fancy_echo "Installing Node.js %s..." "$LATEST_NODE"
+  asdf install nodejs "$LATEST_NODE"
+fi
+
+asdf global nodejs "$LATEST_NODE"
+
+fancy_echo "Node.js %s  /  npm %s" "$(node --version)" "$(npm --version)"
+
+# ---------------------------------------------------------------------------
+# 8. Global npm packages
+# ---------------------------------------------------------------------------
+fancy_echo "Installing global npm packages..."
+npm_install_global "openclaw"
+npm_install_global "@anthropic-ai/claude-code"
+npm_install_global "pnpm"
+
+# ---------------------------------------------------------------------------
+# 9. Shell configuration
+# ---------------------------------------------------------------------------
+fancy_echo "Configuring shell defaults..."
+append_to_file "$HOME/.zshrc" 'export LANG="en_US.UTF-8"'
+
+# ---------------------------------------------------------------------------
+# 10. Local customizations
+# ---------------------------------------------------------------------------
+if [[ -f "$HOME/.macmini.local" ]]; then
+  fancy_echo "Running local customizations from ~/.macmini.local..."
+  # shellcheck disable=SC1091
+  . "$HOME/.macmini.local"
+fi
+
+# ---------------------------------------------------------------------------
+# Done
+# ---------------------------------------------------------------------------
+fancy_echo "Bootstrap complete!"
+echo ""
+echo "  Next steps:"
+echo ""
+echo "  1. Open a new terminal (to pick up shell changes)"
+echo ""
+echo "  2. Run the OpenClaw onboarding wizard:"
+echo ""
+echo "       openclaw onboard --install-daemon"
+echo ""
+echo "     This configures model providers, workspace, gateway,"
+echo "     messaging channels, and installs a LaunchAgent so the"
+echo "     gateway starts on boot."
+echo ""
+echo "  3. (Optional) Open Tailscale and sign in for remote access."
+echo ""
+echo "  4. (Optional) Grant macOS permissions when prompted:"
+echo "     System Settings > Privacy & Security"
+echo "       - Screen Recording"
+echo "       - Camera"
+echo "       - Accessibility"
+echo "       - Notifications"
+echo ""
+echo "  Log: $MACMINI_LOG"
+echo ""
