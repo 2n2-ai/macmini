@@ -107,6 +107,11 @@ brew_install_or_upgrade "git"
 brew_install_or_upgrade "gh"
 brew_install_or_upgrade "jq"
 brew_install_or_upgrade "tmux"
+brew_install_or_upgrade "himalaya"
+brew_install_or_upgrade "cloudflared"
+brew_install_or_upgrade "flyctl"
+brew_install_or_upgrade "python3"
+brew_install_or_upgrade "restic"
 
 # ---------------------------------------------------------------------------
 # 5. Homebrew casks
@@ -116,58 +121,52 @@ brew_cask_install "google-chrome"
 brew_cask_install "tailscale"
 
 # ---------------------------------------------------------------------------
-# 6. asdf version manager
+# 6. mise (runtime version manager)
 # ---------------------------------------------------------------------------
-fancy_echo "Setting up asdf..."
-brew_install_or_upgrade "asdf"
+fancy_echo "Setting up mise..."
+brew_install_or_upgrade "mise"
 
 touch "$HOME/.zshrc"
-append_to_file "$HOME/.zshrc" '. "$(brew --prefix asdf)/libexec/asdf.sh"'
+append_to_file "$HOME/.zshrc" 'eval "$(mise activate zsh)"'
 
-# Source asdf for this session
-ASDF_INIT="$(brew --prefix asdf)/libexec/asdf.sh"
-if [[ -f "$ASDF_INIT" ]]; then
-  # shellcheck disable=SC1090
-  . "$ASDF_INIT"
-fi
+# Activate mise for this session
+eval "$(mise activate bash)"
 
 # ---------------------------------------------------------------------------
-# 7. Node.js via asdf
+# 7. Node.js via mise
 # ---------------------------------------------------------------------------
 fancy_echo "Setting up Node.js..."
 
-if ! asdf plugin list 2>/dev/null | grep -q "^nodejs$"; then
-  asdf plugin add nodejs https://github.com/asdf-vm/asdf-nodejs.git
-fi
-
 NODE_MAJOR="${NODE_MAJOR:-24}"
-LATEST_NODE=$(asdf latest nodejs "$NODE_MAJOR" 2>/dev/null || asdf latest nodejs 22)
-
-if ! asdf list nodejs 2>/dev/null | grep -q "$LATEST_NODE"; then
-  fancy_echo "Installing Node.js %s..." "$LATEST_NODE"
-  asdf install nodejs "$LATEST_NODE"
-fi
-
-asdf global nodejs "$LATEST_NODE"
+mise use --global "node@${NODE_MAJOR}"
 
 fancy_echo "Node.js %s  /  npm %s" "$(node --version)" "$(npm --version)"
 
 # ---------------------------------------------------------------------------
-# 8. Global npm packages
+# 8. Ruby via mise
+# ---------------------------------------------------------------------------
+fancy_echo "Setting up Ruby..."
+mise use --global ruby@latest
+
+fancy_echo "Ruby %s" "$(ruby --version)"
+
+# ---------------------------------------------------------------------------
+# 9. Global npm packages
 # ---------------------------------------------------------------------------
 fancy_echo "Installing global npm packages..."
 npm_install_global "openclaw"
 npm_install_global "@anthropic-ai/claude-code"
 npm_install_global "pnpm"
+npm_install_global "vercel"
 
 # ---------------------------------------------------------------------------
-# 9. Shell configuration
+# 10. Shell configuration
 # ---------------------------------------------------------------------------
 fancy_echo "Configuring shell defaults..."
 append_to_file "$HOME/.zshrc" 'export LANG="en_US.UTF-8"'
 
 # ---------------------------------------------------------------------------
-# 10. Local customizations
+# 11. Local customizations
 # ---------------------------------------------------------------------------
 if [[ -f "$HOME/.macmini.local" ]]; then
   fancy_echo "Running local customizations from ~/.macmini.local..."
@@ -192,9 +191,13 @@ echo "     This configures model providers, workspace, gateway,"
 echo "     messaging channels, and installs a LaunchAgent so the"
 echo "     gateway starts on boot."
 echo ""
-echo "  3. (Optional) Open Tailscale and sign in for remote access."
+echo "  3. (Optional) Restore from backup:"
 echo ""
-echo "  4. (Optional) Grant macOS permissions when prompted:"
+echo "       bash restore"
+echo ""
+echo "  4. (Optional) Open Tailscale and sign in for remote access."
+echo ""
+echo "  5. (Optional) Grant macOS permissions when prompted:"
 echo "     System Settings > Privacy & Security"
 echo "       - Screen Recording"
 echo "       - Camera"
