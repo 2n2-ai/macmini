@@ -2,8 +2,12 @@
 set -e
 
 # macmini — Bootstrap a Mac Mini into a native OpenClaw machine
-# https://github.com/openclaw/macmini
+# https://github.com/2n2-ai/macmini
+#
+# Runs thoughtbot/laptop first, then layers on OpenClaw-specific tools
+# via ~/.laptop.local.
 
+MACMINI_DIR="$(cd "$(dirname "$0")" && pwd)"
 MACMINI_LOG="$HOME/macmini.log"
 exec > >(tee -a "$MACMINI_LOG") 2>&1
 
@@ -16,46 +20,6 @@ fancy_echo() {
   local fmt="$1"; shift
   # shellcheck disable=SC2059
   printf "\\n==> $fmt\\n" "$@"
-}
-
-append_to_file() {
-  local file="$1" text="$2"
-  if ! grep -Fqs "$text" "$file"; then
-    printf '%s\n' "$text" >> "$file"
-  fi
-}
-
-brew_install_or_upgrade() {
-  if brew list --formula 2>/dev/null | grep -q "^$1\$"; then
-    if brew outdated --formula 2>/dev/null | grep -q "^$1"; then
-      fancy_echo "Upgrading %s..." "$1"
-      brew upgrade "$1"
-    else
-      fancy_echo "Already installed: %s" "$1"
-    fi
-  else
-    fancy_echo "Installing %s..." "$1"
-    brew install "$1"
-  fi
-}
-
-brew_cask_install() {
-  if brew list --cask 2>/dev/null | grep -q "^$1\$"; then
-    fancy_echo "Already installed: %s" "$1"
-  else
-    fancy_echo "Installing %s..." "$1"
-    brew install --cask "$1"
-  fi
-}
-
-npm_install_global() {
-  if npm list -g "$1" &>/dev/null; then
-    fancy_echo "Updating %s..." "$1"
-    npm install -g "$1@latest"
-  else
-    fancy_echo "Installing %s..." "$1"
-    npm install -g "$1@latest"
-  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -74,120 +38,17 @@ if [[ "$UPDATE_COUNT" -gt 0 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Xcode Command Line Tools
+# 2. Install ~/.laptop.local (OpenClaw layer)
 # ---------------------------------------------------------------------------
-fancy_echo "Checking for Xcode Command Line Tools..."
-if ! xcode-select -p &>/dev/null; then
-  fancy_echo "Installing Xcode Command Line Tools..."
-  xcode-select --install
-  echo ""
-  echo "    A dialog should have opened. Install the tools, then press ENTER to continue."
-  echo ""
-  read -r
-fi
+fancy_echo "Installing ~/.laptop.local..."
+cp "$MACMINI_DIR/laptop.local" "$HOME/.laptop.local"
 
 # ---------------------------------------------------------------------------
-# 3. Rosetta 2 (Apple Silicon only)
+# 3. Run thoughtbot/laptop
 # ---------------------------------------------------------------------------
-if [[ "$(uname -m)" == "arm64" ]]; then
-  if ! /usr/bin/pgrep -q oahd; then
-    fancy_echo "Installing Rosetta 2..."
-    softwareupdate --install-rosetta --agree-to-license
-  fi
-fi
-
-# ---------------------------------------------------------------------------
-# 4. Homebrew
-# ---------------------------------------------------------------------------
-if ! command -v brew &>/dev/null; then
-  fancy_echo "Installing Homebrew..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-fi
-
-if [[ "$(uname -m)" == "arm64" ]]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-  append_to_file "$HOME/.zprofile" 'eval "$(/opt/homebrew/bin/brew shellenv)"'
-else
-  eval "$(/usr/local/bin/brew shellenv)"
-fi
-
-fancy_echo "Updating Homebrew..."
-brew update
-
-# ---------------------------------------------------------------------------
-# 5. Homebrew formulae
-# ---------------------------------------------------------------------------
-fancy_echo "Installing CLI tools..."
-brew_install_or_upgrade "git"
-brew_install_or_upgrade "gh"
-brew_install_or_upgrade "jq"
-brew_install_or_upgrade "tmux"
-brew_install_or_upgrade "himalaya"
-brew_install_or_upgrade "cloudflared"
-brew_install_or_upgrade "flyctl"
-brew_install_or_upgrade "python3"
-brew_install_or_upgrade "restic"
-
-# ---------------------------------------------------------------------------
-# 6. Homebrew casks
-# ---------------------------------------------------------------------------
-fancy_echo "Installing applications..."
-brew_cask_install "google-chrome"
-brew_cask_install "tailscale"
-
-# ---------------------------------------------------------------------------
-# 7. mise (runtime version manager)
-# ---------------------------------------------------------------------------
-fancy_echo "Setting up mise..."
-brew_install_or_upgrade "mise"
-
-touch "$HOME/.zshrc"
-append_to_file "$HOME/.zshrc" 'eval "$(mise activate zsh)"'
-
-# Activate mise for this session
-eval "$(mise activate bash)"
-
-# ---------------------------------------------------------------------------
-# 8. Node.js via mise
-# ---------------------------------------------------------------------------
-fancy_echo "Setting up Node.js..."
-
-NODE_MAJOR="${NODE_MAJOR:-24}"
-mise use --global "node@${NODE_MAJOR}"
-
-fancy_echo "Node.js %s  /  npm %s" "$(node --version)" "$(npm --version)"
-
-# ---------------------------------------------------------------------------
-# 9. Ruby via mise
-# ---------------------------------------------------------------------------
-fancy_echo "Setting up Ruby..."
-mise use --global ruby@latest
-
-fancy_echo "Ruby %s" "$(ruby --version)"
-
-# ---------------------------------------------------------------------------
-# 10. Global npm packages
-# ---------------------------------------------------------------------------
-fancy_echo "Installing global npm packages..."
-npm_install_global "openclaw"
-npm_install_global "@anthropic-ai/claude-code"
-npm_install_global "pnpm"
-npm_install_global "vercel"
-
-# ---------------------------------------------------------------------------
-# 11. Shell configuration
-# ---------------------------------------------------------------------------
-fancy_echo "Configuring shell defaults..."
-append_to_file "$HOME/.zshrc" 'export LANG="en_US.UTF-8"'
-
-# ---------------------------------------------------------------------------
-# 12. Local customizations
-# ---------------------------------------------------------------------------
-if [[ -f "$HOME/.macmini.local" ]]; then
-  fancy_echo "Running local customizations from ~/.macmini.local..."
-  # shellcheck disable=SC1091
-  . "$HOME/.macmini.local"
-fi
+fancy_echo "Running thoughtbot/laptop..."
+curl -fsSL https://raw.githubusercontent.com/thoughtbot/laptop/main/mac -o /tmp/thoughtbot-laptop
+bash /tmp/thoughtbot-laptop
 
 # ---------------------------------------------------------------------------
 # Done
@@ -208,7 +69,7 @@ echo "     gateway starts on boot."
 echo ""
 echo "  3. (Optional) Restore from backup:"
 echo ""
-echo "       bash restore"
+echo "       cd ~/macmini && bash restore"
 echo ""
 echo "  4. (Optional) Open Tailscale and sign in for remote access."
 echo ""

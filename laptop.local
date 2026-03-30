@@ -1,0 +1,68 @@
+# ~/.laptop.local — OpenClaw additions for thoughtbot/laptop
+#
+# This file is sourced at the end of thoughtbot's laptop script.
+# Everything from laptop is already installed: Homebrew, git, gh,
+# Node.js, Ruby (via asdf), tmux, etc.
+#
+# We add the OpenClaw-specific tools on top.
+
+fancy_echo "Installing OpenClaw layer..."
+
+# ---------------------------------------------------------------------------
+# CLI tools
+# ---------------------------------------------------------------------------
+brew_install_or_upgrade "himalaya"      # Email CLI (IMAP/SMTP)
+brew_install_or_upgrade "cloudflared"   # Cloudflare tunnels
+brew_install_or_upgrade "flyctl"        # Fly.io deployment
+brew_install_or_upgrade "python3"       # Scripting / scrapers
+brew_install_or_upgrade "restic"        # Encrypted backup
+brew_install_or_upgrade "mise"          # Runtime version manager
+
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+brew_cask_install() {
+  if brew list --cask 2>/dev/null | grep -q "^$1\$"; then
+    fancy_echo "Already installed: %s" "$1"
+  else
+    fancy_echo "Installing %s..." "$1"
+    brew install --cask "$1"
+  fi
+}
+
+brew_cask_install "google-chrome"       # Browser automation via CDP
+brew_cask_install "tailscale"           # Remote access
+
+# ---------------------------------------------------------------------------
+# mise runtimes (laptop installs Node/Ruby via asdf — we also set up mise)
+# ---------------------------------------------------------------------------
+fancy_echo "Configuring mise..."
+
+append_to_file "$HOME/.zshrc" 'eval "$(mise activate zsh)"'
+eval "$(mise activate bash)"
+
+NODE_MAJOR="${NODE_MAJOR:-24}"
+mise use --global "node@${NODE_MAJOR}"
+mise use --global ruby@latest
+
+fancy_echo "mise Node.js %s  /  Ruby %s" "$(node --version)" "$(ruby --version)"
+
+# ---------------------------------------------------------------------------
+# Global npm packages
+# ---------------------------------------------------------------------------
+fancy_echo "Installing global npm packages..."
+
+npm_install_global() {
+  if npm list -g "$1" &>/dev/null; then
+    fancy_echo "Updating %s..." "$1"
+    npm install -g "$1@latest"
+  else
+    fancy_echo "Installing %s..." "$1"
+    npm install -g "$1@latest"
+  fi
+}
+
+npm_install_global "openclaw"
+npm_install_global "@anthropic-ai/claude-code"
+npm_install_global "pnpm"
+npm_install_global "vercel"
