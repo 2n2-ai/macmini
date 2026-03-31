@@ -63,8 +63,10 @@ echo "  This can be shared across machines and white-label deployments."
 echo ""
 
 if [[ -d "$HOME/.openclaw/dna.git" ]]; then
-  echo "  DNA repo already exists at ~/.openclaw/dna.git"
-  echo "  Skipping."
+  echo "  DNA repo already exists — pulling latest..."
+  git --git-dir="$HOME/.openclaw/dna.git" --work-tree="$WORKSPACE" fetch origin
+  git --git-dir="$HOME/.openclaw/dna.git" --work-tree="$WORKSPACE" checkout -f
+  git --git-dir="$HOME/.openclaw/dna.git" --work-tree="$WORKSPACE" pull origin main 2>/dev/null || true
 else
   read -rp "  Do you have an agent-dna repo to clone? [y/N] " HAS_DNA
   echo ""
@@ -127,8 +129,10 @@ echo "  Company-specific data: identity, memory, strategy, content."
 echo ""
 
 if [[ -d "$HOME/.openclaw/instance.git" ]]; then
-  echo "  Instance repo already exists at ~/.openclaw/instance.git"
-  echo "  Skipping."
+  echo "  Instance repo already exists — pulling latest..."
+  git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" fetch origin
+  git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" checkout -f
+  git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" pull origin main 2>/dev/null || true
 else
   read -rp "  Do you have an instance repo to clone? [y/N] " HAS_INSTANCE
   echo ""
