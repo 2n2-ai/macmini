@@ -137,7 +137,7 @@ else
     echo ""
     fancy_echo "Cloning Instance repo..."
     git clone --bare "$INSTANCE_REPO" "$HOME/.openclaw/instance.git"
-    git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" checkout
+    git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" checkout -f
     echo "  Done."
   else
     echo "  Initializing empty Instance repo..."
