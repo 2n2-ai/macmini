@@ -67,6 +67,7 @@ brew_cask_install "google-chrome"
 brew_cask_install "tailscale"
 brew_cask_install "slack"
 brew_cask_install "discord"
+brew_cask_install "telegram"
 
 # ---------------------------------------------------------------------------
 # mise runtimes
