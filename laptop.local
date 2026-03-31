@@ -65,6 +65,8 @@ brew_install_or_upgrade "mise"
 # ---------------------------------------------------------------------------
 brew_cask_install "google-chrome"
 brew_cask_install "tailscale"
+brew_cask_install "slack"
+brew_cask_install "discord"
 
 # ---------------------------------------------------------------------------
 # mise runtimes
