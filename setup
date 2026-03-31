@@ -216,21 +216,28 @@ echo ""
 # ---------------------------------------------------------------------------
 fancy_echo "S-Tier: Secrets (never in git)"
 echo ""
-echo "  Migrating? AirDrop openclaw-secrets.zip from the old machine."
-echo "  (On the old machine: bash ~/macmini/bundle-secrets)"
-echo ""
-read -rp "  Path to secrets zip (or ENTER to skip): " SECRETS_ZIP
 
-if [[ -n "$SECRETS_ZIP" && -f "$SECRETS_ZIP" ]]; then
+# Auto-detect secrets zip in ~/macmini/ or ~/Downloads/
+SECRETS_ZIP=""
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+for candidate in "$SCRIPT_DIR/openclaw-secrets.zip" "$HOME/Downloads/openclaw-secrets.zip" "$HOME/Desktop/openclaw-secrets.zip"; do
+  if [[ -f "$candidate" ]]; then
+    SECRETS_ZIP="$candidate"
+    break
+  fi
+done
+
+if [[ -n "$SECRETS_ZIP" ]]; then
+  echo "  Found secrets bundle: $SECRETS_ZIP"
   fancy_echo "Extracting secrets..."
   unzip -o "$SECRETS_ZIP" -d "$HOME/.openclaw"
   chmod 600 "$HOME/.openclaw/secrets.json" 2>/dev/null || true
-  echo "  Done."
-elif [[ -n "$SECRETS_ZIP" ]]; then
-  echo "  File not found: $SECRETS_ZIP"
-  echo "  Skipping — you can re-run setup later."
+  rm "$SECRETS_ZIP"
+  echo "  Extracted and cleaned up."
 else
-  echo "  Skipping secrets. Fresh setup will use openclaw onboard defaults."
+  echo "  No secrets bundle found."
+  echo "  Drop openclaw-secrets.zip into ~/macmini/ and re-run setup,"
+  echo "  or skip for a fresh install."
 fi
 echo ""
 
