@@ -126,9 +126,14 @@ echo ""
 # ---------------------------------------------------------------------------
 fancy_echo "Layer 3: Instance"
 echo "  Company-specific data: identity, memory, strategy, content."
+echo "  Skip this if you're just setting up a new agent (L2 only)."
 echo ""
+read -rp "  Set up Layer 3? [Y/n] " SETUP_L3
 
-if [[ -d "$HOME/.openclaw/instance.git" ]]; then
+if [[ "$SETUP_L3" =~ ^[Nn] ]]; then
+  echo "  Skipping L3. You can re-run setup later to add it."
+  SKIP_L3=true
+elif [[ -d "$HOME/.openclaw/instance.git" ]]; then
   echo "  Instance repo already exists — pulling latest..."
   git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" fetch origin
   git --git-dir="$HOME/.openclaw/instance.git" --work-tree="$WORKSPACE" checkout -f
@@ -215,6 +220,8 @@ else
 fi
 echo ""
 
+if [[ "${SKIP_L3:-}" != "true" ]]; then
+
 # ---------------------------------------------------------------------------
 # S-Tier: Secrets overlay
 # ---------------------------------------------------------------------------
@@ -254,6 +261,8 @@ if [[ -f "$WORKSPACE/configure.sh" ]]; then
 else
   echo "  No configure.sh found in workspace. Skipping L3 config."
 fi
+
+fi # end SKIP_L3
 
 # ---------------------------------------------------------------------------
 # Gateway
