@@ -216,18 +216,22 @@ echo ""
 # ---------------------------------------------------------------------------
 fancy_echo "S-Tier: Secrets (never in git)"
 echo ""
-echo "  Migrating from an existing machine? Copy secrets now."
-echo "  Transfer S-tier secrets from the old machine:"
+echo "  Migrating? AirDrop openclaw-secrets.zip from the old machine."
+echo "  (On the old machine: bash ~/macmini/bundle-secrets)"
 echo ""
-echo "    scp ~/.openclaw/secrets.json     $(whoami)@$(hostname):~/.openclaw/"
-echo "    scp ~/.openclaw/.env             $(whoami)@$(hostname):~/.openclaw/"
-echo "    scp -r ~/.openclaw/credentials/  $(whoami)@$(hostname):~/.openclaw/"
-echo "    scp -r ~/.openclaw/.config/      $(whoami)@$(hostname):~/.openclaw/"
-echo ""
-echo "  (Do NOT copy openclaw.json — configure.sh handles config.)"
-echo "  (Gateway token is generated fresh per machine.)"
-echo ""
-read -rp "  Press ENTER when secrets are in place (or ENTER to skip if fresh)... "
+read -rp "  Path to secrets zip (or ENTER to skip): " SECRETS_ZIP
+
+if [[ -n "$SECRETS_ZIP" && -f "$SECRETS_ZIP" ]]; then
+  fancy_echo "Extracting secrets..."
+  unzip -o "$SECRETS_ZIP" -d "$HOME/.openclaw"
+  chmod 600 "$HOME/.openclaw/secrets.json" 2>/dev/null || true
+  echo "  Done."
+elif [[ -n "$SECRETS_ZIP" ]]; then
+  echo "  File not found: $SECRETS_ZIP"
+  echo "  Skipping — you can re-run setup later."
+else
+  echo "  Skipping secrets. Fresh setup will use openclaw onboard defaults."
+fi
 echo ""
 
 # ---------------------------------------------------------------------------
