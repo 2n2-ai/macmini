@@ -217,26 +217,45 @@ echo ""
 fancy_echo "S-Tier: Secrets (never in git)"
 echo ""
 echo "  Migrating from an existing machine? Copy secrets now."
-echo "  They will overwrite the defaults scaffolded above."
+echo "  Transfer S-tier secrets from the old machine:"
 echo ""
-echo "  From the OLD machine, run:"
-echo ""
-echo "    scp ~/.openclaw/openclaw.json    $(whoami)@$(hostname):~/.openclaw/"
 echo "    scp ~/.openclaw/secrets.json     $(whoami)@$(hostname):~/.openclaw/"
 echo "    scp ~/.openclaw/.env             $(whoami)@$(hostname):~/.openclaw/"
 echo "    scp -r ~/.openclaw/credentials/  $(whoami)@$(hostname):~/.openclaw/"
-echo "    scp -r ~/.openclaw/wallet/       $(whoami)@$(hostname):~/.openclaw/"
-echo "    scp -r ~/.openclaw/identity/     $(whoami)@$(hostname):~/.openclaw/"
 echo "    scp -r ~/.openclaw/.config/      $(whoami)@$(hostname):~/.openclaw/"
 echo ""
-read -rp "  Press ENTER when done (or ENTER to skip if fresh setup)... "
+echo "  (Do NOT copy openclaw.json — configure.sh handles config.)"
+echo "  (Gateway token is generated fresh per machine.)"
+echo ""
+read -rp "  Press ENTER when secrets are in place (or ENTER to skip if fresh)... "
 echo ""
 
 # ---------------------------------------------------------------------------
-# Gateway: restart to pick up any overlaid secrets
+# Apply L3 configuration
 # ---------------------------------------------------------------------------
-fancy_echo "Starting gateway..."
-openclaw gateway restart 2>/dev/null || openclaw gateway install --port 18789
+if [[ -f "$WORKSPACE/configure.sh" ]]; then
+  fancy_echo "Applying L3 configuration..."
+  bash "$WORKSPACE/configure.sh"
+else
+  echo "  No configure.sh found in workspace. Skipping L3 config."
+fi
+
+# ---------------------------------------------------------------------------
+# Gateway
+# ---------------------------------------------------------------------------
+fancy_echo "Installing and starting gateway..."
+openclaw gateway install --port 18789 2>/dev/null || true
+openclaw gateway restart 2>/dev/null || openclaw gateway start 2>/dev/null || echo "  Gateway start failed — check openclaw gateway status"
+
+# ---------------------------------------------------------------------------
+# First-boot verification
+# ---------------------------------------------------------------------------
+if [[ -f "$WORKSPACE/guides/BOOTSTRAP-TEMPLATE.md" ]]; then
+  fancy_echo "Setting up first-boot verification..."
+  cp "$WORKSPACE/guides/BOOTSTRAP-TEMPLATE.md" "$WORKSPACE/BOOTSTRAP.md"
+  echo "  BOOTSTRAP.md created. The agent will run verification on first boot"
+  echo "  and message you with results. It will delete BOOTSTRAP.md when done."
+fi
 
 # ---------------------------------------------------------------------------
 # Done
@@ -244,7 +263,7 @@ openclaw gateway restart 2>/dev/null || openclaw gateway install --port 18789
 echo ""
 fancy_echo "Setup complete!"
 echo ""
-echo "  Aliases available (open a new terminal):"
+echo "  Aliases (available now):"
 echo "    dna       — git operations on Agent DNA (Layer 2)"
 echo "    instance  — git operations on Instance (Layer 3)"
 echo ""
