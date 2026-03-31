@@ -180,100 +180,63 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# S-Tier: Secrets
+# OpenClaw: scaffold with opinionated defaults
+# ---------------------------------------------------------------------------
+fancy_echo "OpenClaw Setup"
+echo ""
+
+if [[ -f "$HOME/.openclaw/openclaw.json" ]]; then
+  echo "  openclaw.json already exists — skipping scaffold."
+else
+  fancy_echo "Scaffolding OpenClaw with opinionated defaults..."
+  GW_TOKEN=$(openssl rand -hex 24)
+
+  openclaw onboard --non-interactive \
+    --accept-risk \
+    --auth-choice skip \
+    --gateway-port 18789 \
+    --gateway-bind loopback \
+    --gateway-auth token \
+    --gateway-token "$GW_TOKEN" \
+    --workspace "$HOME/.openclaw/workspace" \
+    --skip-channels \
+    --skip-search \
+    --skip-skills \
+    --skip-ui \
+    --install-daemon
+
+  echo ""
+  echo "  Gateway token: $GW_TOKEN"
+  echo "  Defaults: Sonnet 4.6, loopback bind, port 18789"
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# S-Tier: Secrets overlay
 # ---------------------------------------------------------------------------
 fancy_echo "S-Tier: Secrets (never in git)"
 echo ""
-
-if [[ -f "$HOME/.openclaw/openclaw.json" ]]; then
-  echo "  openclaw.json found — secrets already in place."
-else
-  echo "  No openclaw.json found."
-  echo ""
-  echo "  If migrating, copy secrets from the old machine now:"
-  echo ""
-  echo "    scp old-machine:~/.openclaw/openclaw.json  ~/.openclaw/"
-  echo "    scp old-machine:~/.openclaw/secrets.json   ~/.openclaw/"
-  echo "    scp old-machine:~/.openclaw/.env           ~/.openclaw/"
-  echo "    scp -r old-machine:~/.openclaw/credentials/ ~/.openclaw/"
-  echo "    scp -r old-machine:~/.openclaw/wallet/      ~/.openclaw/"
-  echo "    scp -r old-machine:~/.openclaw/identity/    ~/.openclaw/"
-  echo "    scp -r old-machine:~/.openclaw/.config/     ~/.openclaw/"
-  echo ""
-  echo "  If fresh setup, you'll need these API keys ready:"
-  echo "    - Anthropic API key"
-  echo "    - Telegram bot token (from @BotFather)"
-  echo "    - Any other channel tokens (Discord, Slack, etc.)"
-  echo ""
-  read -rp "  Press ENTER when secrets are in place (or Ctrl-C to do it later)... "
-
-  if [[ ! -f "$HOME/.openclaw/openclaw.json" ]]; then
-    fancy_echo "Generating openclaw.json from template..."
-    echo ""
-    read -rp "  Anthropic API key: " ANTHROPIC_KEY
-    read -rp "  Telegram bot token (or press ENTER to skip): " TELEGRAM_TOKEN
-    read -rp "  Gateway port [18789]: " GW_PORT
-    GW_PORT="${GW_PORT:-18789}"
-    GW_TOKEN=$(openssl rand -hex 24)
-
-    cat > "$HOME/.openclaw/openclaw.json" << CFGEOF
-{
-  "agents": {
-    "defaults": {
-      "workspace": "$HOME/.openclaw/workspace",
-      "model": {
-        "primary": "anthropic/claude-sonnet-4-6",
-        "fallbacks": [
-          "anthropic/claude-haiku-4-5"
-        ]
-      }
-    }
-  },
-  "channels": {
-    "telegram": {
-      "enabled": $([ -n "$TELEGRAM_TOKEN" ] && echo "true" || echo "false"),
-      "botToken": "$TELEGRAM_TOKEN",
-      "dmPolicy": "allowlist",
-      "allowFrom": [],
-      "groupPolicy": "allowlist"
-    }
-  },
-  "gateway": {
-    "port": $GW_PORT,
-    "bind": "loopback",
-    "auth": {
-      "mode": "token",
-      "token": "$GW_TOKEN"
-    }
-  },
-  "env": {
-    "ANTHROPIC_API_KEY": "$ANTHROPIC_KEY"
-  }
-}
-CFGEOF
-    echo ""
-    echo "  Config generated. Gateway token: $GW_TOKEN"
-    echo "  You can add more channels later via: openclaw config set ..."
-  fi
-fi
+echo "  Migrating from an existing machine? Copy secrets now."
+echo "  They will overwrite the defaults scaffolded above."
+echo ""
+echo "  From the OLD machine, run:"
+echo ""
+echo "    scp ~/.openclaw/openclaw.json    $(whoami)@$(hostname):~/.openclaw/"
+echo "    scp ~/.openclaw/secrets.json     $(whoami)@$(hostname):~/.openclaw/"
+echo "    scp ~/.openclaw/.env             $(whoami)@$(hostname):~/.openclaw/"
+echo "    scp -r ~/.openclaw/credentials/  $(whoami)@$(hostname):~/.openclaw/"
+echo "    scp -r ~/.openclaw/wallet/       $(whoami)@$(hostname):~/.openclaw/"
+echo "    scp -r ~/.openclaw/identity/     $(whoami)@$(hostname):~/.openclaw/"
+echo "    scp -r ~/.openclaw/.config/      $(whoami)@$(hostname):~/.openclaw/"
+echo ""
+read -rp "  Press ENTER when done (or ENTER to skip if fresh setup)... "
 echo ""
 
 # ---------------------------------------------------------------------------
-# Gateway
+# Gateway: restart to pick up any overlaid secrets
 # ---------------------------------------------------------------------------
-fancy_echo "Gateway"
-echo ""
-
-if [[ -f "$HOME/.openclaw/openclaw.json" ]]; then
-  fancy_echo "Installing gateway LaunchAgent..."
-  openclaw gateway install --port "${GW_PORT:-18789}"
-  echo ""
-  fancy_echo "Starting gateway..."
-  openclaw gateway restart
-else
-  echo "  No config found. Cannot start gateway."
-  echo "  Transfer openclaw.json and re-run: bash ~/macmini/setup"
-fi
+fancy_echo "Starting gateway..."
+openclaw gateway restart 2>/dev/null || openclaw gateway install --port 18789
 
 # ---------------------------------------------------------------------------
 # Done
