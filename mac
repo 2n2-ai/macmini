@@ -70,13 +70,15 @@ download "$MACMINI_REPO/laptop.local" "$HOME/.laptop.local"
 # 3. Download thoughtbot/laptop script
 # ---------------------------------------------------------------------------
 fancy_echo "Downloading thoughtbot/laptop..."
-download "https://raw.githubusercontent.com/thoughtbot/laptop/main/mac" "/tmp/thoughtbot-laptop"
+LAPTOP_SCRIPT="$(mktemp /tmp/thoughtbot-laptop.XXXXXX)"
+download "https://raw.githubusercontent.com/thoughtbot/laptop/main/mac" "$LAPTOP_SCRIPT"
 
 # ---------------------------------------------------------------------------
 # 4. Run thoughtbot/laptop
 # ---------------------------------------------------------------------------
 fancy_echo "Running thoughtbot/laptop..."
-bash /tmp/thoughtbot-laptop
+bash "$LAPTOP_SCRIPT"
+rm -f "$LAPTOP_SCRIPT"
 
 # ---------------------------------------------------------------------------
 # Done
