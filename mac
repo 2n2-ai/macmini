@@ -38,16 +38,44 @@ if [[ "$UPDATE_COUNT" -gt 0 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Helper: download with retries and progress
+# ---------------------------------------------------------------------------
+download() {
+  local url="$1" dest="$2" attempt=0 max_attempts=3
+  while (( attempt < max_attempts )); do
+    attempt=$((attempt + 1))
+    fancy_echo "Downloading %s (attempt %d/%d)..." "$url" "$attempt" "$max_attempts"
+    if curl -fSL --retry 3 --retry-delay 2 --connect-timeout 10 -o "$dest" "$url"; then
+      local size
+      size=$(wc -c < "$dest" | tr -d ' ')
+      fancy_echo "Downloaded %s (%s bytes)" "$dest" "$size"
+      return 0
+    else
+      local rc=$?
+      fancy_echo "curl failed (exit %d). Retrying in 5s..." "$rc"
+      sleep 5
+    fi
+  done
+  fancy_echo "FATAL: Failed to download %s after %d attempts" "$url" "$max_attempts"
+  return 1
+}
+
+# ---------------------------------------------------------------------------
 # 2. Install ~/.laptop.local (OpenClaw layer)
 # ---------------------------------------------------------------------------
 fancy_echo "Installing ~/.laptop.local..."
-curl -fsSL "$MACMINI_REPO/laptop.local" -o "$HOME/.laptop.local"
+download "$MACMINI_REPO/laptop.local" "$HOME/.laptop.local"
 
 # ---------------------------------------------------------------------------
-# 3. Run thoughtbot/laptop
+# 3. Download thoughtbot/laptop script
+# ---------------------------------------------------------------------------
+fancy_echo "Downloading thoughtbot/laptop..."
+download "https://raw.githubusercontent.com/thoughtbot/laptop/main/mac" "/tmp/thoughtbot-laptop"
+
+# ---------------------------------------------------------------------------
+# 4. Run thoughtbot/laptop
 # ---------------------------------------------------------------------------
 fancy_echo "Running thoughtbot/laptop..."
-curl -fsSL https://raw.githubusercontent.com/thoughtbot/laptop/main/mac -o /tmp/thoughtbot-laptop
 bash /tmp/thoughtbot-laptop
 
 # ---------------------------------------------------------------------------
