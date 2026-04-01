@@ -265,6 +265,24 @@ fi
 fi # end SKIP_L3
 
 # ---------------------------------------------------------------------------
+# Browser plugin (bundled, must be explicitly enabled)
+# ---------------------------------------------------------------------------
+fancy_echo "Ensuring browser plugin is enabled..."
+if openclaw config get plugins.entries.browser &>/dev/null; then
+  echo "  Browser plugin already configured."
+else
+  openclaw config set plugins.entries.browser.enabled true 2>/dev/null || \
+    python3 -c "
+import json, os
+cfg_path = os.path.expanduser('~/.openclaw/openclaw.json')
+with open(cfg_path) as f: cfg = json.load(f)
+cfg.setdefault('plugins', {}).setdefault('entries', {})['browser'] = {'enabled': True}
+with open(cfg_path, 'w') as f: json.dump(cfg, f, indent=2)
+"
+  echo "  Browser plugin enabled in openclaw.json."
+fi
+
+# ---------------------------------------------------------------------------
 # Gateway
 # ---------------------------------------------------------------------------
 fancy_echo "Installing and starting gateway..."

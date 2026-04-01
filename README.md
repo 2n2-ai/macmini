@@ -76,6 +76,16 @@ bash ~/macmini/setup
 # The wizard handles: gh auth, L2 clone, L3 clone, secrets import, gateway install
 ```
 
+## Post-install: Browser
+
+The browser plugin is a bundled OpenClaw plugin that must be explicitly enabled. The `setup` wizard handles this automatically, but if you need to troubleshoot:
+
+```bash
+openclaw browser status
+```
+
+If you see `unknown method: browser.request` or `pairing required`, see [docs/browser-setup.md](docs/browser-setup.md).
+
 ## Why native instead of Docker?
 
 | | Docker | Native Mac Mini |
