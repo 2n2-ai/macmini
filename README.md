@@ -6,7 +6,13 @@ Runs [thoughtbot/laptop](https://github.com/thoughtbot/laptop) first, then layer
 
 ## Install
 
-Before running, upgrade to the latest macOS via **System Settings > General > Software Update**.
+Before running:
+
+1. Start with a new mac stripped of any personally identifiable information.
+2. Create a user account that is not tied to your Apple ID, but has admin privileges on the mac. 
+3. Upgrade to the latest macOS via **System Settings > General > Software Update**.
+
+Then open terminal and paste in this command:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/2n2-ai/macmini/main/mac | bash
